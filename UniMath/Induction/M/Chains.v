@@ -328,8 +328,37 @@ Proof.
    reflexivity.
 Qed.
 
+Lemma total2_assoc_fun_left {A B : UU} (C : A -> B -> UU) (D : (∏ a : A, ∑ b : B, C a b) -> UU) :
+ (∑ (x : ∏ a : A, ∑ b : B, C a b), D x) ≃
+ ∑ (x : ∏ _ : A, B),
+   ∑ (y : ∏ a : A, C a (x a)),
+     D (fun a : A => (x a,, y a)).
+Proof.
+ use weq_iso.
+ - intros p.
+   exists (fun a => (pr1 (pr1 p a))).
+   exists (fun a => (pr2 (pr1 p a))).
+   exact (pr2 p).
+ - intros p.
+   use tpair.
+   + intros a.
+     use tpair.
+     * exact (pr1 p a).
+     * exact (pr1 (pr2 p) a).
+   + exact (pr2 (pr2 p)).
+ - reflexivity.
+ - reflexivity.
+Qed.
+
 Section theorem_7.
   Context (A : UU) (B : A → UU).
+
+Lemma sec_total2_distributivity (C : ∏ a, B a -> UU) :
+  (∏ a : A, ∑ b : B a, C a b)
+    ≃ (∑ b : ∏ a : A, B a, ∏ a, C a (b a)).
+Proof.
+  admit.
+Admitted.
 
 Definition apply_on_chain (cha : cochain type_precat) : cochain type_precat :=
   mapcochain (polynomial_functor A B) cha.
@@ -339,8 +368,25 @@ Definition weq_polynomial_functor_on_limit (cha : cochain type_precat) :
 Proof.
   induction cha as [X π]; unfold apply_on_chain. simpl.
   unfold mapcochain, mapdiagram, standard_limit; cbn.
-  unfold polynomial_functor_obj, polynomial_functor_arr.
-  admit.
+(* Local Definition Z X l :=
+ ∑ (x : ∏ n, X n), ∏ n, x (S n) = l n (x n). *)
+  Check lemma_11 (fun _ => A) (fun _ => idfun A).
+  apply invweq.
+  unfold polynomial_functor_obj.
+  intermediate_weq ((∑ (x : nat → A) (y : ∏ a : nat, B (x a) → X a),
+          ∏ (u v : nat) (e : S v = u), polynomial_functor_arr A B (π u v e) (x u,, y u) = x v,, y v)
+).
+  apply (@total2_assoc_fun_left nat A (fun v a =>  B a -> X v)
+        (fun x =>  ∏ (u v : nat) (e : S v = u), polynomial_functor_arr A B (π u v e) (x u) = x v)).
+
+  apply sec_total2_distributivity.
+  (* Equation (7) *)
+
+
+
+
+
+
 Admitted.
 
 Definition terminal_cochain  : cochain type_precat :=

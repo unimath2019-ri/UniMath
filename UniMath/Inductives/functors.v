@@ -28,6 +28,11 @@ Definition idmap__i {I : UU} (A : Fam I) :=
 Definition idmap__i' {I : UU} (A : ob(Fam' I)) :=
   identity A.
 
+Section Test.
+  Variable I: UU.
+  Variable A: ob(Fam' I).
+Eval compute in (idmap__i' A).
+End Test.
 
 Definition comp__i {I : UU} {A B C : Fam I}
            (f : B ->__i C)
@@ -38,6 +43,14 @@ Infix "∘__i" := comp__i (at level 49).
 Definition comp__i' {I : UU} {A B C : ob(Fam' I)}
            (f : Fam' I ⟦ B , C ⟧)
            (g : Fam' I ⟦ A , B ⟧) := f ∘ g.
+
+Section Test.
+  Variable I: UU.
+  Variable A B C: ob(Fam' I).
+  Variable f : Fam' I ⟦ B , C ⟧.
+  Variable g : Fam' I ⟦ A , B ⟧.
+Eval compute in (comp__i' f g).
+End Test.
 
 
 Definition weq__i {I : UU} (A B : Fam I) : UU :=
@@ -90,6 +103,11 @@ Definition functor (I J : UU) : UU :=
 
 Definition functor' (I J : UU) : UU :=
   UniMath.CategoryTheory.Core.Functors.functor (Fam' I) (Fam' J).
+
+Section Test.
+  Variable I J: UU.
+  Eval compute in (functor' I J).
+End Test.
 
 Local Close Scope cat.
 

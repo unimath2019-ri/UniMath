@@ -11,7 +11,8 @@ Notation "x .2" := (pr2 x) (at level 3, format "x '.2'").
 Definition Fam (I : UU) :=
   I -> UU.
 
-Definition Fam' (I: UU) := power_precategory I type_precat.
+(* suggested replacement that should get the name [Fam]: *)
+Definition Fam' (I: UU): precategory := power_precategory I type_precat.
 
 Definition Map__i {I : UU} (A B : Fam I) :=
   ∏ i, A i -> B i.
@@ -19,14 +20,16 @@ Infix "->__i" := Map__i (at level 99).
 
 Local Open Scope cat.
 
-Definition Map__i'  {I : UU} (A B : ob (Fam' I)) :=
+Definition Map__i'  {I : UU} (A B : ob (Fam' I)) : UU :=
   Fam' I ⟦ A , B ⟧.
+(* will not be used further *)
 
 Definition idmap__i {I : UU} (A : Fam I) :=
   λ (i : I) (a : A i), a.
 
-Definition idmap__i' {I : UU} (A : ob(Fam' I)) :=
+Definition idmap__i' {I : UU} (A : ob(Fam' I)) : Fam' I ⟦ A , A⟧ :=
   identity A.
+(* no need to use this definition further *)
 
 Section Test.
   Variable I: UU.
@@ -42,7 +45,8 @@ Infix "∘__i" := comp__i (at level 49).
 
 Definition comp__i' {I : UU} {A B C : ob(Fam' I)}
            (f : Fam' I ⟦ B , C ⟧)
-           (g : Fam' I ⟦ A , B ⟧) := f ∘ g.
+           (g : Fam' I ⟦ A , B ⟧) : Fam' I ⟦ A , C ⟧ := f ∘ g .
+(* no need to use this definition further *)
 
 Section Test.
   Variable I: UU.
@@ -103,6 +107,7 @@ Definition functor (I J : UU) : UU :=
 
 Definition functor' (I J : UU) : UU :=
   UniMath.CategoryTheory.Core.Functors.functor (Fam' I) (Fam' J).
+(* no need to use this definition further *)
 
 Section Test.
   Variable I J: UU.

@@ -16,7 +16,6 @@ Require Import UniMath.CategoryTheory.Chains.Cochains.
 Require Import UniMath.CategoryTheory.limits.graphs.limits.
 Require Import UniMath.CategoryTheory.limits.terminal.
 Require Import UniMath.CategoryTheory.limits.graphs.colimits.
-Require Import UniMath.CategoryTheory.limits.graphs.eqdiag.
 Require Import UniMath.CategoryTheory.FunctorCoalgebras.
 
 Require Import UniMath.Induction.PolynomialFunctors.
@@ -327,7 +326,7 @@ Proof.
      reflexivity.
  - cbn.
    reflexivity.
-Qed.
+Defined.
 
 Lemma total2_assoc_fun_left {A B : UU} (C : A -> B -> UU) (D : (∏ a : A, ∑ b : B, C a b) -> UU) :
  (∑ (x : ∏ a : A, ∑ b : B, C a b), D x) ≃
@@ -351,10 +350,7 @@ Proof.
  - reflexivity.
 Qed.
 
-Section theorem_7.
-  Context (A : UU) (B : A → UU).
-
-Lemma sec_total2_distributivity (C : ∏ a, B a -> UU) :
+Lemma sec_total2_distributivity {A : UU} {B : A -> UU} (C : ∏ a, B a -> UU) :
   (∏ a : A, ∑ b : B a, C a b)
     ≃ (∑ b : ∏ a : A, B a, ∏ a, C a (b a)).
 Proof.
@@ -371,6 +367,9 @@ Proof.
   - apply idpath.
 Defined.
 
+Section theorem_7.
+  Context (A : UU) (B : A → UU).
+
 Definition cochain_weq_eq (cha cha' : cochain type_precat)
            (p : (invweq cochain_weq) cha = (invweq cochain_weq) cha') :
   cha = cha'.
@@ -383,23 +382,103 @@ Definition apply_on_chain (cha : cochain type_precat) : cochain type_precat :=
   mapcochain (polynomial_functor A B) cha.
 
 Definition weq_polynomial_functor_on_limit (cha : cochain type_precat) :
-  (polynomial_functor A B)(standard_limit cha) ≃ standard_limit (apply_on_chain cha).
+  polynomial_functor A B (standard_limit cha) ≃ standard_limit (apply_on_chain cha).
 Proof.
-  induction cha as [X π]; unfold apply_on_chain. simpl.
-  unfold mapcochain, mapdiagram, standard_limit; cbn.
-(* Local Definition Z X l :=
- ∑ (x : ∏ n, X n), ∏ n, x (S n) = l n (x n). *)
   apply invweq.
+  eapply weqcomp.
+  apply (invweq (lim_equiv _)).
+  apply invweq.
+
+  intermediate_weq (polynomial_functor A B (cochain_limit cha)). {
+    apply eqweqmap.
+    induction (weqtopaths (lim_equiv ltac:(assumption))).
+    reflexivity.
+  }
+
+  induction cha as [X π]; unfold apply_on_chain. simpl.
+
+  unfold mapcochain, mapdiagram, standard_limit; cbn.
   unfold polynomial_functor_obj.
+  unfold cochain_limit; cbn.
+  apply invweq.
+
   intermediate_weq (
       (∑ (x : nat → A) (y : ∏ a : nat, B (x a) → X a),
-       ∏ (u v : nat) (e : S v = u),
-       polynomial_functor_arr A B (π u v e) (x u,, y u) = x v,, y v)).
-  apply (@total2_assoc_fun_left
-           nat A
-           (fun v a =>  B a -> X v)
-           (fun x =>  ∏ (u v : nat) (e : S v = u),
-                      polynomial_functor_arr A B (π u v e) (x u) = x v)).
+       ∏ n, polynomial_functor_arr A B (π _ n (idpath _)) (x (S n),, y (S n)) =
+            x n,, y n)). {
+    apply (@total2_assoc_fun_left
+            nat A
+            (fun v a =>  B a -> X v)
+            (fun x =>  ∏ n,
+                polynomial_functor_arr A B (π _ n (idpath _)) (x (S n)) = x n)).
+  }
+  unfold polynomial_functor_arr, pr1, pr2.
+  intermediate_weq (
+    (∑ (x : nat → A),
+     ∑ (y : ∏ a : nat, B (x a) → X a),
+     ∏ (n : nat),
+     ∑ (p : x (S n) = x n),
+     transportf (fun a => B a -> X n) p (π _ n (idpath _) ∘ y (S n)) = y n)). {
+    do 2 (apply weqfibtototal; intro).
+    apply weqonsecfibers; intro.
+    apply total2_paths_equiv.
+  }
+  (* Now, we just move the ∑ over a few quantifiers*)
+  intermediate_weq (
+    (∑ (x : nat → A),
+     ∑ (y : ∏ a : nat, B (x a) → X a),
+     ∑ (p : ∏ n, x (S n) = x n),
+     ∏ (n : nat),
+     transportf (fun a => B a -> X n) (p n) (π _ n (idpath _) ∘ y (S n)) = y n)). {
+    do 2 (apply weqfibtototal; intro).
+    apply sec_total2_distributivity.
+  }
+  intermediate_weq (
+    (∑ (x : nat → A),
+     ∑ (p : ∏ n, x (S n) = x n),
+     ∑ (y : ∏ a : nat, B (x a) → X a),
+     ∏ (n : nat),
+     transportf (fun a => B a -> X n) (p n) (π _ n (idpath _) ∘ y (S n)) = y n)). {
+    apply weqfibtototal; intro.
+    apply weqtotal2comm.
+  }
+  intermediate_weq (
+    (∑ (a : A),
+     ∑ (y : ∏ x : nat, B a → X x),
+     ∏ (n : nat),
+     π _ n (idpath _) ∘ y (S n) = y n)). {
+    (* (fun n => π (S n) n (idpath _)) *)
+    pose (l11 := lemma_11 (fun _ => A) (fun _ a => a)).
+    unfold Z in l11.
+    intermediate_weq (
+      (∑ (z : ∑ x : nat → A, ∏ n : nat, x (S n) = x n) (y : ∏ a : nat, B (pr1 z a) → X a),
+       ∏ n : nat,
+         transportf (λ a : A, B a → X n) (pr2 z n) (π (S n) n (idpath (S n)) ∘ y (S n)) = y n)). {
+
+      apply invweq.
+      apply (@weqtotal2asstor (nat -> A) (fun x => ∏ n : nat, x (S n) = x n)).
+    }
+    Check invweq (weqfp (invweq l11) (fun z =>
+   ∑ (y : ∏ a : nat, B (pr1 z a) → X a),
+   ∏ n : nat,
+   transportf (λ a : A, B a → X n) (pr2 z n) (π (S n) n (idpath (S n)) ∘ y (S n)) =
+   y n)).
+
+    assert (∏ x n, (pr2 ((invweq l11) x) n) = idpath _) by reflexivity.
+    assert (∏ x a, pr1 ((invweq l11) x) a = a).
+    Check (pr2 ((invweq l11) _) _).
+                 ).
+    apply (weqfp l11).
+    Search total2.
+    apply invweq, (weqbandf l11).
+    intros zz.
+    Check (weqfp l11).
+(* weqfp_map *)
+
+    apply lemma_11 (fun _ => A) (fun _ a => a).
+    (* Local Definition Z X l := *)
+    (* ∑ (x : ∏ n, X n), ∏ n, x (S n) = l n (x n). *)
+  }
   admit.
 Admitted.
 

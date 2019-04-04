@@ -371,6 +371,7 @@ Proof.
   - apply idpath.
 Defined.
 
+
 Section theorem_7.
   Context (A : UU) (B : A → UU).
 
@@ -519,10 +520,42 @@ Definition m_in : (polynomial_functor A B) m_type ≃ m_type.
   exact (shifted_limit terminal_cochain).
 Defined.
 
-Definition m_coalgebra : coalgebra (polynomial_functor A B) := m_type,, (invweq m_in :(type_precat ⟦ m_type, (polynomial_functor A B) m_type ⟧)%Cat).
+Definition m_out : (type_precat ⟦ m_type, (polynomial_functor A B) m_type ⟧)%Cat :=
+  invweq m_in.
+
+Definition m_coalgebra : coalgebra (polynomial_functor A B) := m_type,, m_out.
 
 Lemma m_coalgebra_is_final : is_final m_coalgebra.
 Proof.
+  unfold is_final.
+  intro coalg; induction coalg as [C γ].
+  apply iscontrifweqtounit.
+  Check (pr2 (pr1 (polynomial_functor A B))) C m_type.
+  intermediate_weq (
+      ∑ (f : C  → m_type), (invweq m_in) ∘ f =
+           (pr2 (pr1 (polynomial_functor A B)) C m_type f) ∘ γ). {
+    unfold polynomial_functor, coalgebra_homo.
+    cbn.
+    apply weqfibtototal;intros.
+    unfold is_coalgebra_homo.
+    cbn.
+    apply (pathsinv0,, isweqpathsinv0 _ _).
+  }
+  intermediate_weq (
+      ∑ (f : C  → m_type), m_in ∘ (invweq m_in) ∘ f =
+           m_in ∘ (pr2 (pr1 (polynomial_functor A B)) C m_type f) ∘ γ). {
+    apply weqfibtototal;intros f.
+    (* Should follow from below...
+       weq_comp_l in Felix develop is weqffun in UniMath.
+
+*)
+    Check @weqffun (polynomial_functor A B m_type) _ _ m_in.
+    Check m_in.
+    apply ((weqonpaths (@weqffun C (polynomial_functor A B m_type)
+                                 _
+                                 m_in)
+             (invweq m_in ∘ f)
+             ((pr21 (polynomial_functor A B)) C m_type f ∘ γ))).
   admit.
 Admitted.
 End theorem_7.

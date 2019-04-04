@@ -16,6 +16,7 @@ Require Import UniMath.CategoryTheory.Chains.Cochains.
 Require Import UniMath.CategoryTheory.limits.graphs.limits.
 Require Import UniMath.CategoryTheory.limits.terminal.
 Require Import UniMath.CategoryTheory.limits.graphs.colimits.
+Require Import UniMath.CategoryTheory.limits.graphs.eqdiag.
 Require Import UniMath.CategoryTheory.FunctorCoalgebras.
 
 Require Import UniMath.Induction.PolynomialFunctors.
@@ -357,8 +358,26 @@ Lemma sec_total2_distributivity (C : ∏ a, B a -> UU) :
   (∏ a : A, ∑ b : B a, C a b)
     ≃ (∑ b : ∏ a : A, B a, ∏ a, C a (b a)).
 Proof.
-  admit.
-Admitted.
+  use weq_iso.
+  - intro f.
+    use tpair.
+    + exact (fun a => pr1 (f a)).
+    + exact (fun a => pr2 (f a)).
+  - intro f.
+    intro a.
+    exists ((pr1 f) a).
+    apply (pr2 f).
+  - apply idpath.
+  - apply idpath.
+Defined.
+
+Definition cochain_weq_eq (cha cha' : cochain type_precat)
+           (p : (invweq cochain_weq) cha = (invweq cochain_weq) cha') :
+  cha = cha'.
+Proof.
+  apply (isweqmaponpaths (invweq cochain_weq)).
+  assumption.
+Defined.
 
 Definition apply_on_chain (cha : cochain type_precat) : cochain type_precat :=
   mapcochain (polynomial_functor A B) cha.
@@ -370,23 +389,18 @@ Proof.
   unfold mapcochain, mapdiagram, standard_limit; cbn.
 (* Local Definition Z X l :=
  ∑ (x : ∏ n, X n), ∏ n, x (S n) = l n (x n). *)
-  Check lemma_11 (fun _ => A) (fun _ => idfun A).
   apply invweq.
   unfold polynomial_functor_obj.
-  intermediate_weq ((∑ (x : nat → A) (y : ∏ a : nat, B (x a) → X a),
-          ∏ (u v : nat) (e : S v = u), polynomial_functor_arr A B (π u v e) (x u,, y u) = x v,, y v)
-).
-  apply (@total2_assoc_fun_left nat A (fun v a =>  B a -> X v)
-        (fun x =>  ∏ (u v : nat) (e : S v = u), polynomial_functor_arr A B (π u v e) (x u) = x v)).
-
-  apply sec_total2_distributivity.
-  (* Equation (7) *)
-
-
-
-
-
-
+  intermediate_weq (
+      (∑ (x : nat → A) (y : ∏ a : nat, B (x a) → X a),
+       ∏ (u v : nat) (e : S v = u),
+       polynomial_functor_arr A B (π u v e) (x u,, y u) = x v,, y v)).
+  apply (@total2_assoc_fun_left
+           nat A
+           (fun v a =>  B a -> X v)
+           (fun x =>  ∏ (u v : nat) (e : S v = u),
+                      polynomial_functor_arr A B (π u v e) (x u) = x v)).
+  admit.
 Admitted.
 
 Definition terminal_cochain  : cochain type_precat :=
@@ -394,31 +408,20 @@ Definition terminal_cochain  : cochain type_precat :=
 
 Definition m_type  := standard_limit terminal_cochain.
 
-Definition terminal_cochain_shifted :
+Definition terminal_cochain_shifted_lim :
   standard_limit (shift_cochain terminal_cochain) ≃
                  standard_limit (apply_on_chain terminal_cochain).
 Proof.
+  induction terminal_cochain as [X π].
+
   admit.
 Admitted.
-(*
-  unfold standard_limit.
-  unfold polynomial_functor.
-  cbn.
-  unfold polynomial_functor_obj.
-  fold.
-  apply weqfibtototal.
-  unfold functor_data_from_functor.
-  unfold mk_functor.
-  unfold functor_on_objects.
-  unfold polynomial_functor_data.
-*)
-
 
 Definition m_in : (polynomial_functor A B) m_type ≃ m_type.
   eapply weqcomp.
   exact (weq_polynomial_functor_on_limit terminal_cochain).
   eapply weqcomp.
-  exact (invweq terminal_cochain_shifted).
+  exact (invweq terminal_cochain_shifted_lim).
   exact (shifted_limit terminal_cochain).
 Defined.
 
@@ -428,3 +431,4 @@ Lemma m_coalgebra_is_final : is_final m_coalgebra.
 Proof.
   admit.
 Admitted.
+End theorem_7.

@@ -371,6 +371,14 @@ Proof.
   - apply idpath.
 Defined.
 
+Lemma cochain_limit_standard_limit_weq (cha cha' : cochain type_precat) :
+  cochain_limit cha ≃ cochain_limit cha' → standard_limit cha ≃ standard_limit cha'.
+Proof.
+  intro f.
+  apply (weqcomp (invweq (lim_equiv _))).
+  apply (weqcomp f).
+  apply (lim_equiv _).
+Defined.
 
 Section theorem_7.
   Context (A : UU) (B : A → UU).
@@ -500,12 +508,7 @@ Definition terminal_cochain_shifted_lim :
   standard_limit (shift_cochain terminal_cochain) ≃
                  standard_limit (apply_on_chain terminal_cochain).
 Proof.
-  eapply weqcomp.
-  apply (invweq (lim_equiv _)).
-  apply invweq.
-  eapply weqcomp.
-  apply (invweq (lim_equiv _)).
-  apply invweq.
+  apply cochain_limit_standard_limit_weq.
   unfold shift_cochain, apply_on_chain, cochain_limit.
   apply weqfibtototal;intros.
   apply weqonsecfibers; intro n.
@@ -546,16 +549,35 @@ Proof.
     m_in ∘ (invweq m_in) ∘ f =
     m_in ∘ (pr2 (pr1 (polynomial_functor A B)) C m_type f) ∘ γ). {
     apply weqfibtototal;intros f.
-    (* Should follow from below...
-       weq_comp_l in Felix develop is weqffun in UniMath (I think). *)
-    Check @weqffun (polynomial_functor A B m_type) _ _ m_in.
-    Check m_in.
-    (* This does not terminate when trying to type check *)
-    apply ((weqonpaths (@weqffun C (polynomial_functor A B m_type)
-                                 _
-                                 m_in)
+    (* ----- Below term is veeeery slow ------- *)
+    apply (@weqonpaths
+             (C → (polynomial_functor A B) m_type)
+             (C → m_type)
+             (@weqffun C (polynomial_functor A B m_type) m_type m_in)
              (invweq m_in ∘ f)
-             ((pr21 (polynomial_functor A B)) C m_type f ∘ γ))).
+             ((pr21 (polynomial_functor A B)) C m_type f ∘ γ)
+          ).
+  }
+  set (ψ f := m_in ∘ (pr2 (pr1 (polynomial_functor A B)) C m_type f) ∘ γ).
+  intermediate_weq (
+    ∑ (f : C  → m_type),
+    f = (ψ f)). {
+    apply weqfibtototal;intro f.
+    apply (@transitive_paths_weq _ (m_in ∘ invweq m_in ∘ f) f (ψ f)).
+    apply funextfun; intros c.
+    exact (homotweqinvweq m_in (f c)).
+  }
+  set (Cone := cone terminal_cochain C).
+  (* missing implicite arguments *)
+  set (e := (invweq (@limit_up_weq conat_graph terminal_cochain C m_type _ _)) :
+              Cone ≃ (C -> m_type)).
+  intermediate_weq (∑ c : Cone, e c = Ψ (e c)). {
+    apply invweq.
+    use weq_functor_total2.
+    - exact e.
+    - intros c.
+      apply idweq.
+  }
   admit.
 Admitted.
 End theorem_7.

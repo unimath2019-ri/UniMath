@@ -542,15 +542,15 @@ Proof.
     apply (pathsinv0,, isweqpathsinv0 _ _).
   }
   intermediate_weq (
-      ∑ (f : C  → m_type), m_in ∘ (invweq m_in) ∘ f =
-           m_in ∘ (pr2 (pr1 (polynomial_functor A B)) C m_type f) ∘ γ). {
+    ∑ (f : C  → m_type),
+    m_in ∘ (invweq m_in) ∘ f =
+    m_in ∘ (pr2 (pr1 (polynomial_functor A B)) C m_type f) ∘ γ). {
     apply weqfibtototal;intros f.
     (* Should follow from below...
-       weq_comp_l in Felix develop is weqffun in UniMath.
-
-*)
+       weq_comp_l in Felix develop is weqffun in UniMath (I think). *)
     Check @weqffun (polynomial_functor A B m_type) _ _ m_in.
     Check m_in.
+    (* This does not terminate when trying to type check *)
     apply ((weqonpaths (@weqffun C (polynomial_functor A B m_type)
                                  _
                                  m_in)

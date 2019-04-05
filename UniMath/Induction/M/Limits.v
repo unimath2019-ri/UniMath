@@ -167,12 +167,6 @@ Section CochainLimit.
 
   Lemma simplify_cochain_step
         {u v : nat}
-        (x : X u)
-        (e : S v = u) :
-    dmor coch e x = π' v x.
-
-  Lemma simplify_cochain_step
-        {u v : nat}
         (x : forall n, X n)
         (e : S v = u) :
     dmor coch e (x u) = π' v (x (S v)).

@@ -425,7 +425,6 @@ Proof.
     reflexivity.
   }
   induction cha as [X π]; unfold apply_on_chain. simpl.
-
   unfold mapcochain, mapdiagram, standard_limit; cbn.
   unfold polynomial_functor_obj.
   unfold cochain_limit; cbn.
@@ -473,46 +472,23 @@ Proof.
   }
   intermediate_weq (
     (∑ (a : A),
-     ∑ (u : ∏ m : nat, B a → X m),
-     ∏ (n : nat),
-     π _ n (idpath _) ∘ u (S n) = u n)). {
+     ∑ (u : ∏ n, B a → X n),
+     ∏ (n : nat), π _ n (idpath _) ∘ u (S n) = u n)). {
+    (* Should follow from correct application of  lemma_11 *)
     admit.
-  (*
-    Check lemma_11_unfolded.
-    Check (lemma_11_unfolded (fun n => A ) (fun m a => a)).
-    intermediate_weq (
-         (∑ (x : nat → A),
-          ∏ (n : nat),
-          x (S n) = x n),
-          Σ(y : ∏ a : nat, B (x a) → X a),
-          ∏ n : nat,
-                transportf (λ a : A, B a → X n) (p n) (π (S n) n (idpath (S n)) ∘ y (S n)) = y n).
-
-
-
-    intermediate_weq (
-      (∑ (z : ∑ x : nat → A, ∏ n : nat, x (S n) = x n) (y : ∏ a : nat, B (pr1 z a) → X a),
-       ∏ n : nat,
-         transportf (λ a : A, B a → X n) (pr2 z n) (π (S n) n (idpath (S n)) ∘ y (S n)) = y n)). {
-      apply invweq.
-      apply (@weqtotal2asstor (nat -> A) (fun x => ∏ n : nat, x (S n) = x n)).
-    }
-    Check (lemma_11_unfolded (fun _ => A) (fun _ a => a)).
-
-
-  use (weqfp).
-    Search total2.
-    apply invweq, (weqbandf l11).
-    intros zz.
-    Check (weqfp l11).
-(* weqfp_map *)
-
-    apply lemma_11 (fun _ => A) (fun _ a => a).
-    (* Local Definition Z X l := *)
-    (* ∑ (x : ∏ n, X n), ∏ n, x (S n) = l n (x n). *)
-  } *)
   }
-  admit.
+  intermediate_weq (
+    ∑(a : A),
+    B a →  cochain_limit (X ,, π)). {
+    apply weqfibtototal; intro a.
+    unfold cochain_limit.
+    simpl.
+    (* Should follow directly by some Lemma in unimath *)
+    admit.
+  }
+  unfold cochain_limit.
+  cbn.
+  apply idweq.
 Admitted.
 
 Definition terminal_cochain  : cochain type_precat :=

@@ -371,6 +371,24 @@ Proof.
   - apply idpath.
 Defined.
 
+
+Lemma weq_functor_total2 {A B : UU} (C : A -> UU) (D : B -> UU) :
+  ∏ e : A ≃ B,
+        (∏ x, C x ≃ D (e x)) ->
+        (∑ x, C x) ≃ (∑ x, D x).
+Proof.
+  intros e f.
+  exact (weqbandf e C D f).
+Defined.
+
+Lemma weq_functor_total2_id {A : UU} (B C : A -> UU) :
+  (∏ x, B x ≃ C x) ->
+  (∑ x, B x) ≃ (∑ x, C x).
+Proof.
+  intros e.
+  apply (weqfibtototal B C e).
+Defined.
+
 Lemma cochain_limit_standard_limit_weq (cha cha' : cochain type_precat) :
   cochain_limit cha ≃ cochain_limit cha' → standard_limit cha ≃ standard_limit cha'.
 Proof.
@@ -528,6 +546,7 @@ Definition m_out : (type_precat ⟦ m_type, (polynomial_functor A B) m_type ⟧)
 
 Definition m_coalgebra : coalgebra (polynomial_functor A B) := m_type,, m_out.
 
+Local Open Scope cat.
 Lemma m_coalgebra_is_final : is_final m_coalgebra.
 Proof.
   unfold is_final.
@@ -536,7 +555,7 @@ Proof.
   Check (pr2 (pr1 (polynomial_functor A B))) C m_type.
   intermediate_weq (
       ∑ (f : C  → m_type), (invweq m_in) ∘ f =
-           (pr2 (pr1 (polynomial_functor A B)) C m_type f) ∘ γ). {
+           (pr2 (pr1 (polynomial_functor A B)) C m_type f) ∘ γ)%functions. {
     unfold polynomial_functor, coalgebra_homo.
     cbn.
     apply weqfibtototal;intros.
@@ -547,9 +566,10 @@ Proof.
   intermediate_weq (
     ∑ (f : C  → m_type),
     m_in ∘ (invweq m_in) ∘ f =
-    m_in ∘ (pr2 (pr1 (polynomial_functor A B)) C m_type f) ∘ γ). {
+    m_in ∘ (pr2 (pr1 (polynomial_functor A B)) C m_type f) ∘ γ)%functions. {
     apply weqfibtototal;intros f.
     (* ----- Below term is veeeery slow ------- *)
+    (*
     apply (@weqonpaths
              (C → (polynomial_functor A B) m_type)
              (C → m_type)
@@ -557,27 +577,97 @@ Proof.
              (invweq m_in ∘ f)
              ((pr21 (polynomial_functor A B)) C m_type f ∘ γ)
           ).
+     *)
+    admit.
   }
   set (ψ f := m_in ∘ (pr2 (pr1 (polynomial_functor A B)) C m_type f) ∘ γ).
   intermediate_weq (
     ∑ (f : C  → m_type),
     f = (ψ f)). {
     apply weqfibtototal;intro f.
-    apply (@transitive_paths_weq _ (m_in ∘ invweq m_in ∘ f) f (ψ f)).
+    apply (@transitive_paths_weq _ (m_in ∘ invweq m_in ∘ f)%functions f (ψ f)).
     apply funextfun; intros c.
     exact (homotweqinvweq m_in (f c)).
   }
   set (Cone := cone terminal_cochain C).
-  (* missing implicite arguments *)
-  set (e := (invweq (@limit_up_weq conat_graph terminal_cochain C m_type _ _)) :
+  set (e := (invweq (@limit_up_weq conat_graph terminal_cochain C m_type (type_cone terminal_cochain) limit_universal )) :
               Cone ≃ (C -> m_type)).
-  intermediate_weq (∑ c : Cone, e c = Ψ (e c)). {
+  intermediate_weq (∑ c : Cone, e c = ψ (e c)). {
     apply invweq.
     use weq_functor_total2.
     - exact e.
     - intros c.
       apply idweq.
   }
+  set (Φ := (invmap e ∘ (ψ : (C -> m_type) -> C -> m_type) ∘ e)%functions :
+              Cone -> Cone).
+  intermediate_weq (∑ c : Cone, e c = e (Φ c)). {
+    apply weq_functor_total2_id; intros c.
+    assert (H : ∏ {A : UU} (a b c : A),
+              b = c ->
+              (a = b) ≃ (a = c)).
+    {
+       intros ? ? ? ? e'; induction e'; apply idweq.
+    }
+    apply H.
+    unfold Φ.
+    change (ψ (e c) = e (invmap e (ψ (e c)))).
+    rewrite homotweqinvweq.
+    reflexivity.
+  }
+  intermediate_weq (∑ c : Cone, c = Φ c). {
+    apply weqfibtototal; intro.
+    apply (invweq (weqonpaths _ _ _)).
+  }
+  Check iter_functor (polynomial_functor A B).
+  set (W n := iter_functor (polynomial_functor A B) n unit).
+  set (Cone0' n := C -> W n).
+  set (Cone0 := ∏ n, Cone0' n).
+  set (π n := dmor terminal_cochain (idpath (S n))).
+  set (Cone1' (u : Cone0) n := (π n ∘ u (S n) = u n)%functions).
+  set (Cone1 (u : Cone0) := ∏ n, Cone1' u n).
+  assert (Cone = (∑ u : Cone0, Cone1 u)). {
+    unfold Cone, cone, Cone0, Cone1, Cone0', Cone1'.
+    apply weqtopaths.
+    apply weqfibtototal; intro.
+    use weq_iso.
+    - intros eq ?.
+      apply (eq (S n) n (idpath _)).
+    - intros n u v e'.
+      unfold edge in *.
+      cbn in e'.
+      Check (dmor terminal_cochain e')%functions.
+      apply funextsec; intro.
+      induction e'.
+      cbn.
+      rewrite (simplify_cochain_step terminal_cochain).
+      rewrite ((simplify_cochain_step terminal_cochain _ _)).
+      Check simplify_cochain_step terminal_cochain _ e'.
+      cbn.
+
+    -
+    -
+    Check simplify_cochain_step terminal_cochain.
+
+    use weqbandf.
+    - apply idweq.
+      reflexivity.
+      cbn.
+      refl.
+    unfold W, dob, vertex.
+    unfold terminal_cochain, termCochain, pr1.
+
+    cbn.
+    apply weqfibtototal.
+      }by reflexivity.
+  intermediate_weq (∑ u : Cone0, ∑ q : Cone1 u, u,, q = Φ (u,, q)). {
+    apply total2_associativity.
+}
+  intermediate_weq (∑ (u : Cone) (q : Cone),
+                    ∑ (p : u =
+                    c = Φ c). {
+  }
+
   admit.
 Admitted.
 End theorem_7.

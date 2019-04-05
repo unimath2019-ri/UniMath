@@ -326,20 +326,174 @@ Proof.
      reflexivity.
  - cbn.
    reflexivity.
+Defined.
+
+(* Maybe easier to apply in Lemma *)
+Definition lemma_11_unfolded (X : nat -> UU) (l : ∏ n, X n -> X (S n)) :
+  (∑ (x : ∏ n, X n), ∏ n, x (S n) = l n (x n)) ≃ X 0 := lemma_11 X l.
+
+Lemma total2_assoc_fun_left {A B : UU} (C : A -> B -> UU) (D : (∏ a : A, ∑ b : B, C a b) -> UU) :
+ (∑ (x : ∏ a : A, ∑ b : B, C a b), D x) ≃
+ ∑ (x : ∏ _ : A, B),
+   ∑ (y : ∏ a : A, C a (x a)),
+     D (fun a : A => (x a,, y a)).
+Proof.
+ use weq_iso.
+ - intros p.
+   exists (fun a => (pr1 (pr1 p a))).
+   exists (fun a => (pr2 (pr1 p a))).
+   exact (pr2 p).
+ - intros p.
+   use tpair.
+   + intros a.
+     use tpair.
+     * exact (pr1 p a).
+     * exact (pr1 (pr2 p) a).
+   + exact (pr2 (pr2 p)).
+ - reflexivity.
+ - reflexivity.
 Qed.
+
+Lemma sec_total2_distributivity {A : UU} {B : A -> UU} (C : ∏ a, B a -> UU) :
+  (∏ a : A, ∑ b : B a, C a b)
+    ≃ (∑ b : ∏ a : A, B a, ∏ a, C a (b a)).
+Proof.
+  use weq_iso.
+  - intro f.
+    use tpair.
+    + exact (fun a => pr1 (f a)).
+    + exact (fun a => pr2 (f a)).
+  - intro f.
+    intro a.
+    exists ((pr1 f) a).
+    apply (pr2 f).
+  - apply idpath.
+  - apply idpath.
+Defined.
+
+Lemma cochain_limit_standard_limit_weq (cha cha' : cochain type_precat) :
+  cochain_limit cha ≃ cochain_limit cha' → standard_limit cha ≃ standard_limit cha'.
+Proof.
+  intro f.
+  apply (weqcomp (invweq (lim_equiv _))).
+  apply (weqcomp f).
+  apply (lim_equiv _).
+Defined.
 
 Section theorem_7.
   Context (A : UU) (B : A → UU).
+
+Definition cochain_weq_eq (cha cha' : cochain type_precat)
+           (p : (invweq cochain_weq) cha = (invweq cochain_weq) cha') :
+  cha = cha'.
+Proof.
+  apply (isweqmaponpaths (invweq cochain_weq)).
+  assumption.
+Defined.
 
 Definition apply_on_chain (cha : cochain type_precat) : cochain type_precat :=
   mapcochain (polynomial_functor A B) cha.
 
 Definition weq_polynomial_functor_on_limit (cha : cochain type_precat) :
-  (polynomial_functor A B)(standard_limit cha) ≃ standard_limit (apply_on_chain cha).
+  polynomial_functor A B (standard_limit cha) ≃ standard_limit (apply_on_chain cha).
 Proof.
+  apply invweq.
+  eapply weqcomp.
+  apply (invweq (lim_equiv _)).
+  apply invweq.
+  intermediate_weq (polynomial_functor A B (cochain_limit cha)). {
+    apply eqweqmap.
+    induction (weqtopaths (lim_equiv ltac:(assumption))).
+    reflexivity.
+  }
   induction cha as [X π]; unfold apply_on_chain. simpl.
+
   unfold mapcochain, mapdiagram, standard_limit; cbn.
-  unfold polynomial_functor_obj, polynomial_functor_arr.
+  unfold polynomial_functor_obj.
+  unfold cochain_limit; cbn.
+  apply invweq.
+
+  intermediate_weq (
+      (∑ (x : nat → A) (y : ∏ a : nat, B (x a) → X a),
+       ∏ n, polynomial_functor_arr A B (π _ n (idpath _)) (x (S n),, y (S n)) =
+            x n,, y n)). {
+    apply (@total2_assoc_fun_left
+            nat A
+            (fun v a =>  B a -> X v)
+            (fun x =>  ∏ n,
+                polynomial_functor_arr A B (π _ n (idpath _)) (x (S n)) = x n)).
+  }
+  unfold polynomial_functor_arr, pr1, pr2.
+  intermediate_weq (
+    (∑ (x : nat → A),
+     ∑ (y : ∏ a : nat, B (x a) → X a),
+     ∏ (n : nat),
+     ∑ (p : x (S n) = x n),
+     transportf (fun z => B z -> X n) p (π _ n (idpath _) ∘ y (S n)) = y n)). {
+    do 2 (apply weqfibtototal; intro).
+    apply weqonsecfibers; intro.
+    apply total2_paths_equiv.
+  }
+  (* Now, we just move the ∑ over a few quantifiers*)
+  intermediate_weq (
+    (∑ (x : nat → A),
+     ∑ (y : ∏ a : nat, B (x a) → X a),
+     ∑ (p : ∏ n, x (S n) = x n),
+     ∏ (n : nat),
+     transportf (fun a => B a -> X n) (p n) (π _ n (idpath _) ∘ y (S n)) = y n)). {
+    do 2 (apply weqfibtototal; intro).
+    apply sec_total2_distributivity.
+  }
+  intermediate_weq (
+    (∑ (a : nat → A),
+     ∑ (p : ∏ n, a (S n) = a n),
+     ∑ (u : ∏ m : nat, B (a m) → X m),
+     ∏ (n : nat),
+     transportf (fun z => B z -> X n) (p n) (π _ n (idpath _) ∘ u (S n)) = u n)). {
+    apply weqfibtototal; intro.
+    apply weqtotal2comm.
+  }
+  intermediate_weq (
+    (∑ (a : A),
+     ∑ (u : ∏ m : nat, B a → X m),
+     ∏ (n : nat),
+     π _ n (idpath _) ∘ u (S n) = u n)). {
+    admit.
+  (*
+    Check lemma_11_unfolded.
+    Check (lemma_11_unfolded (fun n => A ) (fun m a => a)).
+    intermediate_weq (
+         (∑ (x : nat → A),
+          ∏ (n : nat),
+          x (S n) = x n),
+          Σ(y : ∏ a : nat, B (x a) → X a),
+          ∏ n : nat,
+                transportf (λ a : A, B a → X n) (p n) (π (S n) n (idpath (S n)) ∘ y (S n)) = y n).
+
+
+
+    intermediate_weq (
+      (∑ (z : ∑ x : nat → A, ∏ n : nat, x (S n) = x n) (y : ∏ a : nat, B (pr1 z a) → X a),
+       ∏ n : nat,
+         transportf (λ a : A, B a → X n) (pr2 z n) (π (S n) n (idpath (S n)) ∘ y (S n)) = y n)). {
+      apply invweq.
+      apply (@weqtotal2asstor (nat -> A) (fun x => ∏ n : nat, x (S n) = x n)).
+    }
+    Check (lemma_11_unfolded (fun _ => A) (fun _ a => a)).
+
+
+  use (weqfp).
+    Search total2.
+    apply invweq, (weqbandf l11).
+    intros zz.
+    Check (weqfp l11).
+(* weqfp_map *)
+
+    apply lemma_11 (fun _ => A) (fun _ a => a).
+    (* Local Definition Z X l := *)
+    (* ∑ (x : ∏ n, X n), ∏ n, x (S n) = l n (x n). *)
+  } *)
+  }
   admit.
 Admitted.
 
@@ -348,38 +502,82 @@ Definition terminal_cochain  : cochain type_precat :=
 
 Definition m_type  := standard_limit terminal_cochain.
 
-Definition terminal_cochain_shifted :
+(* Shifting the terminal cochain is equivalent to applying
+   the polynomial functor once *)
+Definition terminal_cochain_shifted_lim :
   standard_limit (shift_cochain terminal_cochain) ≃
                  standard_limit (apply_on_chain terminal_cochain).
 Proof.
-  admit.
-Admitted.
-(*
-  unfold standard_limit.
-  unfold polynomial_functor.
-  cbn.
-  unfold polynomial_functor_obj.
-  fold.
-  apply weqfibtototal.
-  unfold functor_data_from_functor.
-  unfold mk_functor.
-  unfold functor_on_objects.
-  unfold polynomial_functor_data.
-*)
-
+  apply cochain_limit_standard_limit_weq.
+  unfold shift_cochain, apply_on_chain, cochain_limit.
+  apply weqfibtototal;intros.
+  apply weqonsecfibers; intro n.
+  apply idweq.
+Defined.
 
 Definition m_in : (polynomial_functor A B) m_type ≃ m_type.
   eapply weqcomp.
   exact (weq_polynomial_functor_on_limit terminal_cochain).
   eapply weqcomp.
-  exact (invweq terminal_cochain_shifted).
+  exact (invweq terminal_cochain_shifted_lim).
   exact (shifted_limit terminal_cochain).
 Defined.
 
-Definition m_coalgebra : coalgebra (polynomial_functor A B) := m_type,, (invweq m_in :(type_precat ⟦ m_type, (polynomial_functor A B) m_type ⟧)%Cat).
+Definition m_out : (type_precat ⟦ m_type, (polynomial_functor A B) m_type ⟧)%Cat :=
+  invweq m_in.
+
+Definition m_coalgebra : coalgebra (polynomial_functor A B) := m_type,, m_out.
 
 Lemma m_coalgebra_is_final : is_final m_coalgebra.
 Proof.
+  unfold is_final.
+  intro coalg; induction coalg as [C γ].
+  apply iscontrifweqtounit.
+  Check (pr2 (pr1 (polynomial_functor A B))) C m_type.
+  intermediate_weq (
+      ∑ (f : C  → m_type), (invweq m_in) ∘ f =
+           (pr2 (pr1 (polynomial_functor A B)) C m_type f) ∘ γ). {
+    unfold polynomial_functor, coalgebra_homo.
+    cbn.
+    apply weqfibtototal;intros.
+    unfold is_coalgebra_homo.
+    cbn.
+    apply (pathsinv0,, isweqpathsinv0 _ _).
+  }
+  intermediate_weq (
+    ∑ (f : C  → m_type),
+    m_in ∘ (invweq m_in) ∘ f =
+    m_in ∘ (pr2 (pr1 (polynomial_functor A B)) C m_type f) ∘ γ). {
+    apply weqfibtototal;intros f.
+    (* ----- Below term is veeeery slow ------- *)
+    apply (@weqonpaths
+             (C → (polynomial_functor A B) m_type)
+             (C → m_type)
+             (@weqffun C (polynomial_functor A B m_type) m_type m_in)
+             (invweq m_in ∘ f)
+             ((pr21 (polynomial_functor A B)) C m_type f ∘ γ)
+          ).
+  }
+  set (ψ f := m_in ∘ (pr2 (pr1 (polynomial_functor A B)) C m_type f) ∘ γ).
+  intermediate_weq (
+    ∑ (f : C  → m_type),
+    f = (ψ f)). {
+    apply weqfibtototal;intro f.
+    apply (@transitive_paths_weq _ (m_in ∘ invweq m_in ∘ f) f (ψ f)).
+    apply funextfun; intros c.
+    exact (homotweqinvweq m_in (f c)).
+  }
+  set (Cone := cone terminal_cochain C).
+  (* missing implicite arguments *)
+  set (e := (invweq (@limit_up_weq conat_graph terminal_cochain C m_type _ _)) :
+              Cone ≃ (C -> m_type)).
+  intermediate_weq (∑ c : Cone, e c = Ψ (e c)). {
+    apply invweq.
+    use weq_functor_total2.
+    - exact e.
+    - intros c.
+      apply idweq.
+  }
   admit.
 Admitted.
 

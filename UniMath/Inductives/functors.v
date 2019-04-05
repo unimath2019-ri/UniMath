@@ -1,4 +1,7 @@
 Require Export UniMath.Foundations.PartA.
+Require Import UniMath.CategoryTheory.Core.Categories.
+Require Import UniMath.CategoryTheory.ProductCategory.
+Require Import UniMath.CategoryTheory.categories.Types.
 
 
 Notation "x .1" := (pr1 x) (at level 3, format "x '.1'").
@@ -8,18 +11,51 @@ Notation "x .2" := (pr2 x) (at level 3, format "x '.2'").
 Definition Fam (I : UU) :=
   I -> UU.
 
+(* suggested replacement that should get the name [Fam]: *)
+Definition Fam' (I: UU): precategory := power_precategory I type_precat.
+
 Definition Map__i {I : UU} (A B : Fam I) :=
   ∏ i, A i -> B i.
 Infix "->__i" := Map__i (at level 99).
 
+Local Open Scope cat.
+
+Definition Map__i'  {I : UU} (A B : ob (Fam' I)) : UU :=
+  Fam' I ⟦ A , B ⟧.
+(* will not be used further *)
+
 Definition idmap__i {I : UU} (A : Fam I) :=
   λ (i : I) (a : A i), a.
+
+Definition idmap__i' {I : UU} (A : ob(Fam' I)) : Fam' I ⟦ A , A⟧ :=
+  identity A.
+(* no need to use this definition further *)
+
+Section Test.
+  Variable I: UU.
+  Variable A: ob(Fam' I).
+Eval compute in (idmap__i' A).
+End Test.
 
 Definition comp__i {I : UU} {A B C : Fam I}
            (f : B ->__i C)
            (g : A ->__i B) :=
   λ i a, f i (g i a).
 Infix "∘__i" := comp__i (at level 49).
+
+Definition comp__i' {I : UU} {A B C : ob(Fam' I)}
+           (f : Fam' I ⟦ B , C ⟧)
+           (g : Fam' I ⟦ A , B ⟧) : Fam' I ⟦ A , C ⟧ := f ∘ g .
+(* no need to use this definition further *)
+
+Section Test.
+  Variable I: UU.
+  Variable A B C: ob(Fam' I).
+  Variable f : Fam' I ⟦ B , C ⟧.
+  Variable g : Fam' I ⟦ A , B ⟧.
+Eval compute in (comp__i' f g).
+End Test.
+
 
 Definition weq__i {I : UU} (A B : Fam I) : UU :=
   ∏ i, A i ≃ B i.
@@ -68,6 +104,17 @@ Definition is_functor {I J : UU} (F : prefunctor I J) :=
 Definition functor (I J : UU) : UU :=
   ∑ F : prefunctor I J,
         is_functor F.
+
+Definition functor' (I J : UU) : UU :=
+  UniMath.CategoryTheory.Core.Functors.functor (Fam' I) (Fam' J).
+(* no need to use this definition further *)
+
+Section Test.
+  Variable I J: UU.
+  Eval compute in (functor' I J).
+End Test.
+
+Local Close Scope cat.
 
 Definition build_functor {I J : UU}
            (on_objects : Fam I -> Fam J)

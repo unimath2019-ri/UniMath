@@ -533,6 +533,60 @@ Proof.
   apply idweq.
 Defined.
 
+(* There is a simpler way to give cones over the terminal cochain. *)
+Local Open Scope cat.
+Section CochainCone.
+  Context (C : UU).
+
+  Let W n := iter_functor (polynomial_functor A B) n unit.
+  Let Cone0' := λ n : nat, C → W n.
+  Let Cone0 := ∏ n : nat, Cone0' n.
+  Let π := λ n : nat, dmor terminal_cochain (idpath (S n)).
+
+  Definition simplified_cone : UU :=
+    (∑ (u : Cone0), ∏ n : nat, (π n ∘ u (S n))%functions = u n).
+
+  Lemma simplify_cochain_cone :
+    cone terminal_cochain C ≃ simplified_cone.
+  Proof.
+    unfold cone, Cone0.
+    apply weqfibtototal; intro f.
+    apply weqonsecfibers; intro u.
+    intermediate_weq (
+      (∏ (v : vertex conat_graph) (e0 : edge u v),
+      f _ · dmor terminal_cochain e0 ~ f v)
+      ). {
+      apply weqonsecfibers; intro.
+      apply weqonsecfibers; intro.
+      apply invweq.
+      apply weqfunextsec.
+    }
+    apply invweq.
+    intermediate_weq ((π u ∘ f (S u))%functions ~ f u). {
+      apply invweq, weqfunextsec.
+    }
+    unfold homotsec.
+    apply invweq.
+    intermediate_weq (
+      (∏ (v : vertex conat_graph) (c : C) (e0 : edge u v),
+       (f u · dmor terminal_cochain e0) c = f v c)). {
+      apply weqonsecfibers; intro.
+      apply flipsec_weq.
+    }
+    intermediate_weq (
+      (∏ (c : C) (v : vertex conat_graph) (e0 : edge u v),
+       (f u · dmor terminal_cochain e0) c = f v c)). {
+      apply flipsec_weq.
+    }
+    apply weqonsecfibers; intro c.
+    change (∏ (v : vertex conat_graph) (e0 : edge u v),
+            (f u · dmor terminal_cochain e0) c = f v c) with
+      (∏ (v : vertex conat_graph) (e0 : edge u v),
+            (dmor terminal_cochain e0 ∘ f u) c = f v c).
+  Admitted.
+
+End CochainCone.
+
 Definition m_in : (polynomial_functor A B) m_type ≃ m_type.
   eapply weqcomp.
   exact (weq_polynomial_functor_on_limit terminal_cochain).
@@ -546,7 +600,6 @@ Definition m_out : (type_precat ⟦ m_type, (polynomial_functor A B) m_type ⟧)
 
 Definition m_coalgebra : coalgebra (polynomial_functor A B) := m_type,, m_out.
 
-Local Open Scope cat.
 Lemma m_coalgebra_is_final : is_final m_coalgebra.
 Proof.
   unfold is_final.
@@ -589,8 +642,8 @@ Proof.
     apply funextfun; intros c.
     exact (homotweqinvweq m_in (f c)).
   }
-  set (Cone := cone terminal_cochain C).
-  set (e := (invweq (@limit_up_weq conat_graph terminal_cochain C m_type (type_cone terminal_cochain) limit_universal )) :
+  set (Cone := simplified_cone C).
+  set (e := ((invweq (@limit_up_weq conat_graph terminal_cochain C m_type (type_cone terminal_cochain) limit_universal )) ∘ invweq (simplify_cochain_cone C))%weq :
               Cone ≃ (C -> m_type)).
   intermediate_weq (∑ c : Cone, e c = ψ (e c)). {
     apply invweq.
@@ -619,50 +672,17 @@ Proof.
     apply weqfibtototal; intro.
     apply (invweq (weqonpaths _ _ _)).
   }
-  Check iter_functor (polynomial_functor A B).
   set (W n := iter_functor (polynomial_functor A B) n unit).
   set (Cone0' n := C -> W n).
   set (Cone0 := ∏ n, Cone0' n).
   set (π n := dmor terminal_cochain (idpath (S n))).
   set (Cone1' (u : Cone0) n := (π n ∘ u (S n) = u n)%functions).
   set (Cone1 (u : Cone0) := ∏ n, Cone1' u n).
-  assert (Cone = (∑ u : Cone0, Cone1 u)). {
-    unfold Cone, cone, Cone0, Cone1, Cone0', Cone1'.
-    apply weqtopaths.
-    apply weqfibtototal; intro.
-    use weq_iso.
-    - intros eq ?.
-      apply (eq (S n) n (idpath _)).
-    - intros n u v e'.
-      unfold edge in *.
-      cbn in e'.
-      Check (dmor terminal_cochain e')%functions.
-      apply funextsec; intro.
-      induction e'.
-      cbn.
-      rewrite (simplify_cochain_step terminal_cochain).
-      rewrite ((simplify_cochain_step terminal_cochain _ _)).
-      Check simplify_cochain_step terminal_cochain _ e'.
-      cbn.
-
-    -
-    -
-    Check simplify_cochain_step terminal_cochain.
-
-    use weqbandf.
-    - apply idweq.
-      reflexivity.
-      cbn.
-      refl.
-    unfold W, dob, vertex.
-    unfold terminal_cochain, termCochain, pr1.
-
-    cbn.
-    apply weqfibtototal.
-      }by reflexivity.
-  intermediate_weq (∑ u : Cone0, ∑ q : Cone1 u, u,, q = Φ (u,, q)). {
-    apply total2_associativity.
-}
+  assert (w : (∑ u : Cone0, Cone1 u) = Cone) by reflexivity.
+  intermediate_weq (∑ u : Cone0, ∑ q : Cone1 u, (u,, q) = Φ (u,, q)). {
+    unfold Cone, simplified_cone, Cone0, Cone1, Cone0', Cone1', W, π.
+    apply @weqtotal2asstor.
+  }
   intermediate_weq (∑ (u : Cone) (q : Cone),
                     ∑ (p : u =
                     c = Φ c). {

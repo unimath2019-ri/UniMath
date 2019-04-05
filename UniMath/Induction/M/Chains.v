@@ -580,4 +580,5 @@ Proof.
   }
   admit.
 Admitted.
+
 End theorem_7.

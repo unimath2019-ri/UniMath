@@ -1,10 +1,19 @@
 Require Import UniMath.Foundations.UnivalenceAxiom.
 Require Import UniMath.Foundations.PartD.
 Require Import UniMath.Foundations.Propositions.
-Require Export UniMath.Inductives.algebras.
-Require Export UniMath.Inductives.containers.
-Require Import UniMath.Inductives.auxiliary_lemmas.
-
+Require Import UniMath.Foundations.NaturalNumbers.
+(*Require Import UniMath.Inductives.algebrasfun.*)
+Require Import UniMath.CategoryTheory.FunctorCoalgebras.
+Require Import UniMath.CategoryTheory.limits.cats.limits.
+Require Import UniMath.CategoryTheory.limits.graphs.colimits.
+(*Require Import UniMath.Inductives.containers.*)
+(*Require Import UniMath.Inductives.famisfunctor.*)
+(*Require Import UniMath.Inductives.auxiliary_lemmas.*)
+Require Import UniMath.CategoryTheory.Core.Categories.
+Require Import UniMath.CategoryTheory.ProductCategory.
+Require Import UniMath.CategoryTheory.categories.Types.
+Require Import UniMath.CategoryTheory.Core.Functors.
+Require Import UniMath.CategoryTheory.Chains.Cochains.
 
 Lemma transportf_fun
       {A : UU} (B C : A -> UU)
@@ -16,47 +25,105 @@ Proof.
   reflexivity.
 Defined.
 
+Definition Fam (I: UU): precategory := power_precategory I type_precat.
 
 Section M_From_Nat.
 
   Context {I : UU}.
 
 
-  Definition Chain :=
+  Local Open Scope cat.
+  (*Definition Chain :=
     ∑ (X : nat -> Fam I),
-    ∏ n, X (1 + n) ->__i X n.
-  Opaque Chain.
+    ∏ n, X (1 + n) --> X n.*)
+  (*Definition Chain := cochain (Fam I).
+  Eval compute in Chain.
+  Opaque Chain.*)
 
-  Definition build_chain (X : nat -> Fam I) (π : ∏ n, X (1 + n) ->__i X n) : Chain :=
-    X,, π.
+  (*Definition build_chain (X : nat -> Fam I) (π : ∏ n, X (1 + n) --> X n) :
+    Chain.
+  Proof.
+    exists X.
+    intros.
+    rewrite <- X0.
+    apply π.
+  Defined.
 
   Definition chain_types (chain : Chain) : nat -> Fam I :=
     pr1 chain.
 
   Definition chain_functions (chain : Chain) :
     let X := chain_types chain in
-    ∏ n, X (1 + n) ->__i X n :=
-    pr2 chain.
+    ∏ n, X (1 + n) --> X n.
+  Proof.
+    intros.
+    apply (pr2 chain).
+    reflexivity.
+  Defined.
+
+  Eval compute in chain_functions.*)
 
 
   Section Chain_Limit.
 
-    Variable chain : Chain.
-    Let X := chain_types chain.
-    Let π := chain_functions chain.
+    Definition conat_fullgraph :=
+    mk_graph nat (λ m n, n ≤ m).
 
-    Definition limit :=
-      λ i,
-      ∑ (x : ∏ n, X n i),
-      ∏ n, π n i (x (1 + n)) = x n.
+    Definition conat_precat_data : precategory_data.
+    Proof.
+      unfold precategory_data.
+      exists conat_fullgraph.
+      exists isreflnatleh.
+      intros.
+      eapply istransnatleh.
+      apply X0.
+      apply X.
+    Defined.
 
+    Definition conat_precat : precategory.
+    Proof.
+      exists conat_precat_data.
+      unfold is_precategory.
+      repeat split; intros.
+      - cbn.
+        apply .
+
+    (*Variable cc : functor conat_precat (Fam I).
+    Let X := pr1 (pr1 cc).
+    Let π := pr2 (pr1 cc).*)
+
+    Variable cc : cochain (Fam I).
+    Let X := pr1 cc.
+    Let π := pr2 cc.
+
+    Eval compute in X.
+    Eval compute in π.
+
+    Definition limit : I -> Type :=
+      λ i : I,
+      ∑ x : (∏ n, X n i),
+      ∏ n m l, π m n l i (x m) = x n.
+    Goal (∏ i, limit i) -> LimCone cc.
+    Proof.
+      intro l.
+      unfold LimCone.
+      exists (l).
+      ----------------------------------
     Eval compute in limit.
+    Eval compute in lim.
+
 
     Definition Cone (A : Fam I) :=
-      ∑ (f : ∏ n, A ->__i X n),
-      ∏ n, π n ∘__i f (1 + n) = f n.
+      ∑ (f : ∏ n, A --> X n),
+      ∏ n, π n ∘ f (1 + n) = f n.
+    Eval compute in Cone.
 
-    Definition to_cone {A : Fam I} (f : A ->__i limit) : Cone A.
+    Definition to_cone {A : Fam I} (f : A --> limit) : Cone A.
+    Proof.
+      exists
+
+
+    Definition to_cone {A : Fam I} (f : A --> limit) : Cone A.
     Proof.
       exists (λ n i a, pr1 (f i a) n).
       intros n.
@@ -65,7 +132,7 @@ Section M_From_Nat.
       exact (pr2 (f i a) n).
     Defined.
 
-    Definition from_cone {A : Fam I} (cone : Cone A) : A ->__i limit.
+    Definition from_cone {A : Fam I} (cone : Cone A) : A --> limit.
     Proof.
       intros i a.
       exists (λ n, pr1 cone n i a).
@@ -76,7 +143,7 @@ Section M_From_Nat.
     Defined.
 
     Lemma universal_property_of_limit (A : Fam I) :
-      (A ->__i limit) ≃ Cone A.
+      (A --> limit) ≃ Cone A.
     Proof.
       use (weq_iso to_cone from_cone).
       - intros f.
@@ -140,7 +207,7 @@ Section M_From_Nat.
       use total2_paths_f; cbn.
       + exact q'.
       + apply funextsec; intros n.
-        rewrite transportf_sec_constant.
+        unfold transportf.
         intermediate_path (!maponpaths (λ x, x (S n)) q' @
                             maponpaths (λ x, x n) q'). {
           use transportf_paths_FlFr.

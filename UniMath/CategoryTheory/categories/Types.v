@@ -260,45 +260,49 @@ Require Import UniMath.MoreFoundations.Univalence.
 
 (* We first give two distinct proofs that bool equals bool. *)
 
-Definition bool_eq1 :
+Local Definition bool_eq1 :
   bool = bool.
 Proof.
-  apply weqtopaths. exists (fun b => b).
-  intros b. use iscontrpair.
-  - exists b. reflexivity.
-  - intros [b' ->]. reflexivity.
+  apply weqtopaths.
+  apply idweq.
 Defined.
 
-Definition bool_eq2 :
+Local Definition bool_eq2 :
   bool = bool.
 Proof.
-  apply weqtopaths. exists (fun b => negb b).
-  intros b. use iscontrpair.
-  - exists (negb b). destruct b; reflexivity.
-  - abstract (intros [b' <-]; destruct b'; reflexivity).
+  apply weqtopaths.
+  apply (weq_iso negb negb); intro x; induction x; apply idpath.
 Defined.
 
-Lemma bool_eq_distinct :
+Local Lemma bool_eq_distinct :
   ~ (bool_eq1 = bool_eq2).
 Proof.
   intros H. apply (maponpaths cast) in H.
   unfold bool_eq1, bool_eq2 in H. rewrite !weqpath_cast in H. cbn in H.
   change ((bool_rec (fun _ => UU) False unit) ((fun b => b) true)).
-  rewrite H. cbn. exact tt.
+  rewrite H. cbn. split.
+Qed.
+
+(* Basically, this was the proof that UU is not a set: *)
+Lemma UU_no_set :
+  ~ isaset UU.
+Proof.
+  intros H. specialize (H bool bool).
+  apply bool_eq_distinct. apply H.
 Qed.
 
 (* These can be lifted to two distinct proofs for the constant bool function. *)
 
-Definition const_bool : unit -> UU :=
+Local Definition const_bool : unit -> UU :=
   fun _ => bool.
 
-Definition const_bool_eq1 : const_bool = const_bool :=
+Local Definition const_bool_eq1 : const_bool = const_bool :=
   invweq (weqtoforallpaths _ const_bool const_bool) (fun _ => bool_eq1).
 
-Definition const_bool_eq2 : const_bool = const_bool :=
+Local Definition const_bool_eq2 : const_bool = const_bool :=
   invweq (weqtoforallpaths _ const_bool const_bool) (fun _ => bool_eq2).
 
-Definition const_bool_eq_distinct :
+Local Definition const_bool_eq_distinct :
   ~ (const_bool_eq1 = const_bool_eq2).
 Proof.
   unfold const_bool_eq1, const_bool_eq2. intros H. cbn in H.
@@ -315,3 +319,4 @@ Proof.
   intros H. specialize (H unit UU).
   apply const_bool_eq_distinct. apply H.
 Qed.
+(* this exploits UU:UU too much - the functions from unit to UU are isomorphic to UU, but one should use a proper type in UU *)
